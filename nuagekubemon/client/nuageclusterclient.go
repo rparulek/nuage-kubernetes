@@ -23,6 +23,7 @@ import (
 	"github.com/nuagenetworks/nuage-kubernetes/nuagekubemon/api"
 	"github.com/nuagenetworks/nuage-kubernetes/nuagekubemon/config"
 	oscache "github.com/openshift/origin/pkg/client/cache"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kextensions "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/cache"
@@ -80,7 +81,7 @@ func (nosc *NuageClusterClient) Init(nkmConfig *config.NuageKubeMonConfig) {
 
 func (nosc *NuageClusterClient) GetExistingEvents(nsChannel chan *api.NamespaceEvent, serviceChannel chan *api.ServiceEvent, policyEventChannel chan *api.NetworkPolicyEvent) {
 	//we will use the kube client APIs than interfacing with the REST API
-	listOpts := kapi.ListOptions{LabelSelector: labels.Everything(), FieldSelector: fields.Everything()}
+	listOpts := metav1.ListOptions{LabelSelector: labels.Everything().String(), FieldSelector: fields.Everything().String()}
 	nsList, err := nosc.GetNamespaces(&listOpts)
 	if err != nil {
 		glog.Infof("Got an error: %s while getting namespaces list from kube client", err)
@@ -120,7 +121,7 @@ func (nosc *NuageClusterClient) RunServiceWatcher(serviceChannel chan *api.Servi
 	nosc.WatchServices(serviceChannel, stop)
 }
 
-func (nosc *NuageClusterClient) GetNamespaces(listOpts *kapi.ListOptions) (*[]*api.NamespaceEvent, error) {
+func (nosc *NuageClusterClient) GetNamespaces(listOpts *metav1.ListOptions) (*[]*api.NamespaceEvent, error) {
 	namespaces, err := nosc.kubeClient.Namespaces().List(*listOpts)
 	if err != nil {
 		return nil, err
@@ -163,7 +164,7 @@ func (nosc *NuageClusterClient) WatchNamespaces(receiver chan *api.NamespaceEven
 	}
 }
 
-func (nosc *NuageClusterClient) GetServices(listOpts *kapi.ListOptions) (*[]*api.ServiceEvent, error) {
+func (nosc *NuageClusterClient) GetServices(listOpts *metav1.ListOptions) (*[]*api.ServiceEvent, error) {
 	services, err := nosc.kubeClient.Services(kapi.NamespaceAll).List(*listOpts)
 	if err != nil {
 		return nil, err
@@ -219,7 +220,7 @@ func (nosc *NuageClusterClient) GetPod(name string, ns string) (*api.PodEvent, e
 	return &api.PodEvent{Type: api.Added, Name: pod.Name, Namespace: pod.Namespace, Labels: pod.Labels}, nil
 }
 
-func (nosc *NuageClusterClient) GetPods(listOpts *kapi.ListOptions, ns string) (*[]*api.PodEvent, error) {
+func (nosc *NuageClusterClient) GetPods(listOpts *metav1.ListOptions, ns string) (*[]*api.PodEvent, error) {
 	if ns == "" {
 		ns = kapi.NamespaceAll
 	}
