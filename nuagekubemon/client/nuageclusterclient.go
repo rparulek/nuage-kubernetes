@@ -29,7 +29,7 @@ import (
 	kapi "k8s.io/kubernetes/pkg/api"
 	kextensions "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/cache"
-	krestclient "k8s.io/kubernetes/pkg/client/restclient"
+	krestclient "k8s.io/client-go/rest"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -82,12 +82,7 @@ func (nosc *NuageClusterClient) Init(nkmConfig *config.NuageKubeMonConfig) {
 		return
 	}
 
-	kubeClient, err := kclient.New(nosc.kubeConfig)
-	if err != nil {
-		glog.Infof("Got an error: %s while creating the kube client", err)
-	}
 	nosc.clientset = clientset
-	nosc.kubeClient = kubeClient
 }
 
 func (nosc *NuageClusterClient) GetExistingEvents(nsChannel chan *api.NamespaceEvent, serviceChannel chan *api.ServiceEvent, policyEventChannel chan *api.NetworkPolicyEvent) {
@@ -133,7 +128,7 @@ func (nosc *NuageClusterClient) RunServiceWatcher(serviceChannel chan *api.Servi
 }
 
 func (nosc *NuageClusterClient) GetNamespaces(listOpts *metav1.ListOptions) (*[]*api.NamespaceEvent, error) {
-	namespaces, err := nosc.kubeClient.Namespaces().List(*listOpts)
+	namespaces, err := nosc.clientset.CoreV1().Namespaces().List(*listOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +171,7 @@ func (nosc *NuageClusterClient) WatchNamespaces(receiver chan *api.NamespaceEven
 }
 
 func (nosc *NuageClusterClient) GetServices(listOpts *metav1.ListOptions) (*[]*api.ServiceEvent, error) {
-	services, err := nosc.kubeClient.Services(kapi.NamespaceAll).List(*listOpts)
+	services, err := nosc.clientset.CoreV1().Services(kapi.NamespaceAll).List(*listOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +219,7 @@ func (nosc *NuageClusterClient) GetPod(name string, ns string) (*api.PodEvent, e
 	if ns == "" {
 		ns = kapi.NamespaceAll
 	}
-	pod, err := nosc.kubeClient.Pods(ns).Get(name)
+	pod, err := nosc.clientset.CoreV1().Pods(ns).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +230,7 @@ func (nosc *NuageClusterClient) GetPods(listOpts *metav1.ListOptions, ns string)
 	if ns == "" {
 		ns = kapi.NamespaceAll
 	}
-	pods, err := nosc.kubeClient.Pods(ns).List(*listOpts)
+	pods, err := nosc.clientset.CoreV1().Pods(ns).List(*listOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +270,7 @@ func (nosc *NuageClusterClient) WatchPods(receiver chan *api.PodEvent, stop chan
 }
 
 func (nosc *NuageClusterClient) GetNetworkPolicies(listOpts *kapi.ListOptions) (*[]*api.NetworkPolicyEvent, error) {
-	policies, err := nosc.kubeClient.NetworkPolicies(kapi.NamespaceAll).List(*listOpts)
+	policies, err := nosc.clientset.CoreV1().NetworkPolicies(kapi.NamespaceAll).List(*listOpts)
 	if err != nil {
 		return nil, err
 	}
