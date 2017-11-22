@@ -24,12 +24,13 @@ import (
 	"github.com/nuagenetworks/nuage-kubernetes/nuagekubemon/config"
 	oscache "github.com/openshift/origin/pkg/client/cache"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kextensions "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/cache"
 	krestclient "k8s.io/kubernetes/pkg/client/restclient"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/runtime"
@@ -43,6 +44,7 @@ import (
 type NuageClusterClient struct {
 	kubeConfig *krestclient.Config
 	kubeClient *kclient.Client
+	clientset  *kubernetes.Clientset
 }
 
 func NewNuageOsClient(nkmConfig *config.NuageKubeMonConfig) *NuageClusterClient {
@@ -72,10 +74,19 @@ func (nosc *NuageClusterClient) Init(nkmConfig *config.NuageKubeMonConfig) {
 	kubeConfig.Burst = 200
 	kubeConfig.WrapTransport = DefaultClientTransport
 	nosc.kubeConfig = kubeConfig
+
+	//contain clients to various api groups including rest client
+	clientset, err := kubernetes.NewForConfig(nosc.kubeConfig)
+	if err != nil {
+		glog.Errorf("Creating new clientset from kubeconfig failed with error: %v", err)
+		return
+	}
+
 	kubeClient, err := kclient.New(nosc.kubeConfig)
 	if err != nil {
 		glog.Infof("Got an error: %s while creating the kube client", err)
 	}
+	nosc.clientset = clientset
 	nosc.kubeClient = kubeClient
 }
 
