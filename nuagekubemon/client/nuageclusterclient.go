@@ -45,6 +45,7 @@ type NuageClusterClient struct {
 	kubeConfig *krestclient.Config
 	kubeClient *kclient.Client
 	clientset  *kubernetes.Clientset
+	nuagePolicyClient *krestclient.RESTClient
 }
 
 func NewNuageOsClient(nkmConfig *config.NuageKubeMonConfig) *NuageClusterClient {
@@ -75,14 +76,29 @@ func (nosc *NuageClusterClient) Init(nkmConfig *config.NuageKubeMonConfig) {
 	kubeConfig.WrapTransport = DefaultClientTransport
 	nosc.kubeConfig = kubeConfig
 
-	//contain clients to various api groups including rest client
 	clientset, err := kubernetes.NewForConfig(nosc.kubeConfig)
 	if err != nil {
 		glog.Errorf("Creating new clientset from kubeconfig failed with error: %v", err)
 		return
 	}
 
+	policyClient, err := newNuagePolicyClient(nosc.kubeConfig)
+	if err != nil {
+		glog.Errorf("Got an error: %s while creating nuage policy client", err)
+	}
+
 	nosc.clientset = clientset
+	nosc.nuagePolicyClient = policyClient
+}
+
+func newNuagePolicyClient(cfg *krestclient.Config) (*krestclient.RESTClient, error) {
+	config := *cfg
+	client, err := krestclient.RESTClientFor(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
 
 func (nosc *NuageClusterClient) GetExistingEvents(nsChannel chan *api.NamespaceEvent, serviceChannel chan *api.ServiceEvent, policyEventChannel chan *api.NetworkPolicyEvent) {
@@ -110,7 +126,7 @@ func (nosc *NuageClusterClient) GetExistingEvents(nsChannel chan *api.NamespaceE
 	if err != nil {
 		glog.Infof("Got an error: %s while getting network policies list from kube client", err)
 	}
-	for _, policy := range *policiesList {
+	for _, policy := range policiesList {
 		policyEventChannel <- policy
 	}
 }
@@ -269,18 +285,19 @@ func (nosc *NuageClusterClient) WatchPods(receiver chan *api.PodEvent, stop chan
 	}
 }
 
-func (nosc *NuageClusterClient) GetNetworkPolicies(listOpts *kapi.ListOptions) (*[]*api.NetworkPolicyEvent, error) {
-	var nuagePoliciesClient *krestclient.RESTClient
-	policies, err := nuagePoliciesClient.NetworkPolicies(kapi.NamespaceAll).List(*listOpts)
-	if err != nil {
-		return nil, err
-	}
+func (nosc *NuageClusterClient) GetNetworkPolicies(listOpts *metav1.ListOptions) ([]*api.NetworkPolicyEvent, error) {
 	policiesList := make([]*api.NetworkPolicyEvent, 0)
+	policies := &kextensions.NetworkPolicyList{}
+	err := nosc.nuagePolicyClient.Get().Resource("networkpolicies").Do().Into(policies)
+	if err != nil {
+		glog.Errorf("Fetching exisiting network policies failed with error: %v", err)
+		return policiesList, err
+	}
 	for _, policy := range policies.Items {
 		policiesList = append(policiesList, &api.NetworkPolicyEvent{Type: api.Added, Name: policy.Name, Namespace: policy.Namespace, Policy: policy.Spec, Labels: policy.Labels})
 
 	}
-	return &policiesList, nil
+	return policiesList, nil
 }
 
 func (nosc *NuageClusterClient) WatchNetworkPolicies(receiver chan *api.NetworkPolicyEvent, stop chan bool) error {
