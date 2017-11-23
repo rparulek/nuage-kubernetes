@@ -25,11 +25,12 @@ import (
 	oscache "github.com/openshift/origin/pkg/client/cache"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/api/core/v1"
+	krestclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	kapi "k8s.io/kubernetes/pkg/api"
 	kextensions "k8s.io/kubernetes/pkg/apis/networking"
 	"k8s.io/kubernetes/pkg/client/cache"
-	krestclient "k8s.io/client-go/rest"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
@@ -42,9 +43,9 @@ import (
 )
 
 type NuageClusterClient struct {
-	kubeConfig *krestclient.Config
-	kubeClient *kclient.Client
-	clientset  *kubernetes.Clientset
+	kubeConfig        *krestclient.Config
+	kubeClient        *kclient.Client
+	clientset         *kubernetes.Clientset
 	nuagePolicyClient *krestclient.RESTClient
 }
 
@@ -222,7 +223,7 @@ func (nosc *NuageClusterClient) WatchServices(receiver chan *api.ServiceEvent, s
 		case watch.Added:
 			fallthrough
 		case watch.Deleted:
-			service := obj.(*kapi.Service)
+			service := obj.(*v1.Service)
 			labels := GetNuageLabels(service)
 			if label, exists := labels["private-service"]; !exists || strings.ToLower(label) == "false" {
 				receiver <- &api.ServiceEvent{Type: api.EventType(eventType), Name: service.ObjectMeta.Name, ClusterIP: service.Spec.ClusterIP, Namespace: service.ObjectMeta.Namespace, NuageLabels: labels}
@@ -343,7 +344,7 @@ func DefaultClientTransport(rt http.RoundTripper) http.RoundTripper {
 	return transport
 }
 
-func GetNuageLabels(input *kapi.Service) map[string]string {
+func GetNuageLabels(input *v1.Service) map[string]string {
 	labels := input.Labels
 	nuageLabels := make(map[string]string)
 	for k, v := range labels {
