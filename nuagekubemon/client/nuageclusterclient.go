@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	kapi "k8s.io/kubernetes/pkg/api"
-	kextensions "k8s.io/kubernetes/pkg/apis/extensions"
+	kextensions "k8s.io/kubernetes/pkg/apis/networking"
 	"k8s.io/kubernetes/pkg/client/cache"
 	krestclient "k8s.io/client-go/rest"
 	kclient "k8s.io/kubernetes/pkg/client/unversioned"
@@ -270,7 +270,8 @@ func (nosc *NuageClusterClient) WatchPods(receiver chan *api.PodEvent, stop chan
 }
 
 func (nosc *NuageClusterClient) GetNetworkPolicies(listOpts *kapi.ListOptions) (*[]*api.NetworkPolicyEvent, error) {
-	policies, err := nosc.clientset.CoreV1().NetworkPolicies(kapi.NamespaceAll).List(*listOpts)
+	var nuagePoliciesClient *krestclient.RESTClient
+	policies, err := nuagePoliciesClient.NetworkPolicies(kapi.NamespaceAll).List(*listOpts)
 	if err != nil {
 		return nil, err
 	}
