@@ -6,10 +6,14 @@ RUNAS=root
 if [ "$1" = "k8s" ]; then
     BIN=/usr/bin/nuagekubemon
     PIDFILE=/var/run/nuagekubemon.pid
+    MONITOR=nuagekubemon
     rm -irf /usr/bin/nuage-openshift-monitor
     rm -irf /usr/share/nuagekubemon/nuagekubemon.yaml
     rm -irf /usr/share/nuagekubemon/net-config.yaml
-    MONITOR=nuagekubemon
+    mkdir -p /var/log/nuagekubemon
+    mkdir -p /usr/share/nuagekubemon
+    chmod 755 /var/log/nuagekubemon
+    chmod 755 /usr/share/nuagekubemon
     MONITOR_CONF='/usr/share/nuagekubemon/nuagekubemon.yaml'
     NET_CONF='/usr/share/nuagekubemon/net-config.yaml'
 fi
@@ -17,15 +21,34 @@ fi
 if [ "$1" = "ose" ]; then
     BIN=/usr/bin/nuage-openshift-monitor
     PIDFILE=/var/run/nuage-openshift-monitor.pid
+    MONITOR=nuage-openshift-monitor
     rm -irf /usr/bin/nuagekubemon
     rm -irf /usr/share/nuage-openshift-monitor/nuage-openshift-monitor.yaml
-    MONITOR=nuage-openshift-monitor
+    mkdir -p /var/log/nuage-openshift-monitor
+    mkdir -p /usr/share/nuage-openshift-monitor
+    chmod 755 /var/log/nuage-openshift-monitor
+    chmod 755 /usr/share/nuage-openshift-monitor
     MONITOR_CONF='/usr/share/nuage-openshift-monitor/nuage-openshift-monitor.yaml'
 fi
 
 if [ "$2" = "is_atomic" ]; then
     DIR='/var/usr/share'
     MONITOR_CONF=$DIR/$MONITOR/$MONITOR.yaml
+fi
+
+if [ "$2" = "is_coreos" ]; then
+    BIN=/var/usr/bin/nuagekubemon
+    PIDFILE=/var/run/nuagekubemon.pid
+    MONITOR=nuagekubemon
+    rm -irf /var/usr/bin/nuage-openshift-monitor
+    rm -irf /var/usr/share/nuagekubemon/nuagekubemon.yaml
+    rm -irf /var/usr/share/nuagekubemon/net-config.yaml
+    mkdir -p /var/log/nuagekubemon
+    mkdir -p /var/usr/share/nuagekubemon
+    chmod 755 /var/log/nuagekubemon
+    chmod 755 /var/usr/share/nuagekubemon
+    MONITOR_CONF='/var/usr/share/nuagekubemon/nuagekubemon.yaml'
+    NET_CONF='/var/usr/share/nuagekubemon/net-config.yaml'
 fi
 
 # Configuring Nuage monitor yaml file on master nodes using
