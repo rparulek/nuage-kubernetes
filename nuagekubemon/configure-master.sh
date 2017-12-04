@@ -37,7 +37,7 @@ if [ "$2" = "is_atomic" ]; then
 fi
 
 if [ "$2" = "is_coreos" ]; then
-    BIN=/var/usr/bin/nuagekubemon
+    BIN=/usr/bin/nuagekubemon
     PIDFILE=/var/run/nuagekubemon.pid
     MONITOR=nuagekubemon
     rm -irf /var/usr/bin/nuage-openshift-monitor
