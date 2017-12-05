@@ -2671,13 +2671,17 @@ func logPOSTRequest(reqUrl string, payload interface{}) {
 }
 
 func logGETResponse(resp *napping.Response, e *api.RESTError) {
-	glog.Infoln("VSD GET Reponse status: ", resp.Status())
-	glog.Infof("VSD GET Error: %s\n", e)
-	glog.Infof("VSD GET Raw Text:\n\n%+v\n\n", resp.RawText())
+	if resp != nil {
+		glog.Infoln("VSD GET Reponse status: ", resp.Status())
+		glog.Infof("VSD GET Error: %s\n", e)
+		glog.Infof("VSD GET Raw Text:\n\n%+v\n\n", resp.RawText())
+	}
 }
 
 func logPOSTResponse(resp *napping.Response, e *api.RESTError) {
-	glog.Infoln("VSD POST Reponse status: ", resp.Status())
-	glog.Infof("VSD POST Error: %s\n", e)
-	glog.Infof("VSD POST Raw Text:\n\n%+v\n\n", resp.RawText())
+	if resp != nil {
+		glog.Infoln("VSD POST Reponse status: ", resp.Status())
+		glog.Infof("VSD POST Error: %s\n", e)
+		glog.Infof("VSD POST Raw Text:\n\n%+v\n\n", resp.RawText())
+	}
 }
