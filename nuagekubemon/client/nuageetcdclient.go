@@ -512,9 +512,11 @@ func (nuageetcd *NuageEtcdClient) AddZone(zoneInfo *api.EtcdZoneMetadata) (strin
 	if !txnResp.Succeeded {
 		getResp := (*clientv3.GetResponse)(txnResp.Responses[0].GetResponseRange())
 		id = string(getResp.Kvs[0].Value)
+		glog.Infof("Transaction Occured. Zone ID retrieved from etcd %s", id)
 		if id != "" {
 			return id, nil
 		}
+		glog.Info("No zone id obtained; will watch for the etcd key for the zone")
 	} else {
 		return "", nil
 	}
@@ -608,11 +610,13 @@ func (nuageetcd *NuageEtcdClient) nuageWatch(key string, transform func([]byte) 
 		return transform(getResp.Kvs[0].Value), nil
 	}
 
+	glog.Infof("No key value pairs present in etcd db for the given key %s", key)
+
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		nuageEtcdRetry(
 			func() error {
-				watchChan = nuageetcd.client.Watch(ctx, key, clientv3.WithRev(getResp.Header.Revision+1))
+				watchChan = nuageetcd.client.Watch(ctx, key, clientv3.WithMinModRev(getResp.Header.Revision))
 				return nil
 			})
 		select {
