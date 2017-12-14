@@ -132,7 +132,143 @@ func CreateNuagePGPolicy(
 		}
 	}
 
+	// Egress policy handling: ROHAN
+	for _, egressRule := range k8sNetworkPolicySpec.Egress {
+		for _, to := range egressRule.To {
+			var toPG api.PgInfo
+			if destSelector, err := metav1.LabelSelectorAsSelector(to.PodSelector); err == nil {
+				if toPG, ok = policyGroupMap[destSelector.String()]; !ok {
+					return nil, fmt.Errorf("Policy group missing for %s", destSelector.String())
+				}
+			} else {
+				return nil, fmt.Errorf("Destination policy group information was not found for %s", destSelector.String())
+			}
+			if len(egressRule.Ports) == 0 {
+				defaultPolicyElement = policies.DefaultPolicyElement{
+					Name: fmt.Sprintf("%s-%d", policyName, 0),
+					To: policies.EndPoint{Type: policies.PolicyGroup,
+						Name: toPG.PgName},
+					From: policies.EndPoint{Type: policies.PolicyGroup,
+						Name: targetPG.PgName},
+					Action: policies.Allow,
+					NetworkParameters: policies.NetworkParameters{
+						Protocol: policies.TCP,
+						DestinationPortRange: policies.PortRange{StartPort: 0,
+							EndPort: 0}},
+				}
+				glog.Infof("Adding policy event %+v", defaultPolicyElement)
+				defaultPolicyElements = append(defaultPolicyElements, defaultPolicyElement)
+			} else {
+				for idx, targetPort := range egressRule.Ports {
+					if targetPort.Port == nil {
+						return nil, fmt.Errorf("Received nil value for port number for non-nil ports section")
+					}
+					port := targetPort.Port.IntValue()
+					targetProtocol := policies.TCP
+					if *targetPort.Protocol == kapi.ProtocolUDP {
+						targetProtocol = policies.UDP
+					} else if *targetPort.Protocol == kapi.ProtocolTCP {
+						targetProtocol = policies.TCP
+					}
+
+					defaultPolicyElement = policies.DefaultPolicyElement{
+						Name: fmt.Sprintf("%s-%d", policyName, idx),
+						To: policies.EndPoint{Type: policies.PolicyGroup,
+							Name: toPG.PgName},
+						From: policies.EndPoint{Type: policies.PolicyGroup,
+							Name: targetPG.PgName},
+						Action: policies.Allow,
+						NetworkParameters: policies.NetworkParameters{
+							Protocol: targetProtocol,
+							DestinationPortRange: policies.PortRange{StartPort: port,
+								EndPort: port}},
+					}
+
+					glog.Infof("Adding policy event %+v", defaultPolicyElement)
+					defaultPolicyElements = append(defaultPolicyElements, defaultPolicyElement)
+				}
+			}
+		}
+	}
+
 	nuagePolicy.PolicyElements = defaultPolicyElements
 
 	return &nuagePolicy, nil
+}
+
+func createNuageIngressEgressPolicies(pe *api.NetworkPolicyEvent, policyType string) {
+
+	policyName := pe.Name
+	var policyGroupMap map[string]api.PgInfo
+	var targetPG api.PgInfo
+	var defaultPolicyElements []policies.DefaultPolicyElement
+	var defaultPolicyElement policies.DefaultPolicyElement
+	var ok bool
+	policyRule := pe.Policy.Egress
+	if policyType == "egress" {
+		policyRule = pe.Policy.Egress
+	}
+
+	// Egress policy handling: ROHAN
+	for _, nuageRule := range policyRule {
+		policyDirection := nuageRule.To
+		if policyType == "egress" {
+			policyDirection = nuageRule.To
+		}
+		for _, direction := range policyDirection {
+			var toPG api.PgInfo
+			if destSelector, err := metav1.LabelSelectorAsSelector(direction.PodSelector); err == nil {
+				if toPG, ok = policyGroupMap[destSelector.String()]; !ok {
+					//fmt.Errorf("Policy group missing for %s", destSelector.String())
+				}
+			} else {
+				//return nil, fmt.Errorf("Destination policy group information was not found for %s", destSelector.String())
+			}
+			if len(nuageRule.Ports) == 0 {
+				defaultPolicyElement = policies.DefaultPolicyElement{
+					Name: fmt.Sprintf("%s-%d", policyName, 0),
+					To: policies.EndPoint{Type: policies.PolicyGroup,
+						Name: toPG.PgName},
+					From: policies.EndPoint{Type: policies.PolicyGroup,
+						Name: targetPG.PgName},
+					Action: policies.Allow,
+					NetworkParameters: policies.NetworkParameters{
+						Protocol: policies.TCP,
+						DestinationPortRange: policies.PortRange{StartPort: 0,
+							EndPort: 0}},
+				}
+				glog.Infof("Adding policy event %+v", defaultPolicyElement)
+				defaultPolicyElements = append(defaultPolicyElements, defaultPolicyElement)
+			} else {
+				for idx, targetPort := range nuageRule.Ports {
+					if targetPort.Port == nil {
+						//return fmt.Errorf("Received nil value for port number for non-nil ports section")
+					}
+					port := targetPort.Port.IntValue()
+					targetProtocol := policies.TCP
+					if *targetPort.Protocol == kapi.ProtocolUDP {
+						targetProtocol = policies.UDP
+					} else if *targetPort.Protocol == kapi.ProtocolTCP {
+						targetProtocol = policies.TCP
+					}
+
+					defaultPolicyElement = policies.DefaultPolicyElement{
+						Name: fmt.Sprintf("%s-%d", policyName, idx),
+						To: policies.EndPoint{Type: policies.PolicyGroup,
+							Name: toPG.PgName},
+						From: policies.EndPoint{Type: policies.PolicyGroup,
+							Name: targetPG.PgName},
+						Action: policies.Allow,
+						NetworkParameters: policies.NetworkParameters{
+							Protocol: targetProtocol,
+							DestinationPortRange: policies.PortRange{StartPort: port,
+								EndPort: port}},
+					}
+
+					glog.Infof("Adding policy event %+v", defaultPolicyElement)
+					defaultPolicyElements = append(defaultPolicyElements, defaultPolicyElement)
+				}
+			}
+		}
+	}
 }
